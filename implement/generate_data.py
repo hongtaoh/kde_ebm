@@ -156,7 +156,7 @@ def reformat_data(
 
 if __name__ == "__main__":
     ns = [50, 200, 500]
-    rs = [0.1, 0.25, 0.5]
+    rs = [0.1, 0.25, 0.5, 0.75, 0.9]
     num_of_datasets_per_combination = 50
     # S_ordering =[
     #     'HIP-FCI', 'PCC-FCI', 'HIP-GMI', 'FUS-GMI', 'FUS-FCI'
