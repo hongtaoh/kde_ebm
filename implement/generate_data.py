@@ -19,8 +19,8 @@ def generate_data_from_ebm(
     real_theta_phi_file: str,
     healthy_ratio: float,
     output_dir: str,
-    m, # combstr_m
-    seed: Optional[int] = None
+    m,  # combstr_m
+    seed: Optional[int] = 0
 ) -> pd.DataFrame:
     """
     Simulate an Event-Based Model (EBM) for disease progression.
@@ -54,7 +54,8 @@ def generate_data_from_ebm(
     except FileNotFoundError:
         raise FileNotFoundError(f"File {real_theta_phi} not fount")
     except json.JSONDecodeError:
-        raise ValueError(f"File {real_theta_phi_file} is not a valid JSON file.")
+        raise ValueError(
+            f"File {real_theta_phi_file} is not a valid JSON file.")
 
     n_biomarkers = len(S_ordering)
     n_stages = n_biomarkers + 1
@@ -63,7 +64,8 @@ def generate_data_from_ebm(
     n_diseased = int(n_participants - n_healthy)
 
     # Generate disease stages
-    kjs = np.concatenate((np.zeros(n_healthy, dtype=int), rng.integers(1, n_stages, n_diseased)))
+    kjs = np.concatenate((np.zeros(n_healthy, dtype=int),
+                         rng.integers(1, n_stages, n_diseased)))
     # shuffle so that it's not 0s first and then disease stages bur all random
     rng.shuffle(kjs)
 
@@ -85,7 +87,7 @@ def generate_data_from_ebm(
     for j in range(n_participants):
         for n, biomarker in enumerate(S_ordering):
             # because for each j, we generate X[j, n] in the order of S_ordering,
-            # the final dataset will have this ordering as well. 
+            # the final dataset will have this ordering as well.
             k_j = kjs[j]
             S_n = n + 1
 
@@ -108,20 +110,22 @@ def generate_data_from_ebm(
     # make this dataframe wide to long
     df_long = df.melt(var_name="Biomarker", value_name="Value")
     data = df_long['Value'].apply(pd.Series)
-    data.columns = ['participant', "biomarker", 'measurement', 'k_j', 'S_n', 'affected_or_not']
+    data.columns = ['participant', "biomarker",
+                    'measurement', 'k_j', 'S_n', 'affected_or_not']
 
-    biomarker_name_change_dic = dict(zip(S_ordering, range(1, n_biomarkers + 1)))
+    biomarker_name_change_dic = dict(
+        zip(S_ordering, range(1, n_biomarkers + 1)))
     data['diseased'] = data.apply(lambda row: row.k_j > 0, axis=1)
     data.drop(['k_j', 'S_n', 'affected_or_not'], axis=1, inplace=True)
     data['biomarker'] = data.apply(
         lambda row: f"{row.biomarker} ({biomarker_name_change_dic[row.biomarker]})", axis=1)
-    
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    combination_str = f"{int(healthy_ratio*n_participants)}|{n_participants}_{m}"
-    data.to_csv(f'{output_dir}/{combination_str}.csv', index=False)
-    print("Data generation done! Output saved to:", combination_str)
+    filename = f"{int(healthy_ratio*n_participants)}|{n_participants}_{m}"
+    data.to_csv(f'{output_dir}/{filename}.csv', index=False)
+    print("Data generation done! Output saved to:", filename)
     return data
 
 def reformat_data(
@@ -153,37 +157,28 @@ def reformat_data(
         file.seek(0, 0)  # Move the cursor to the beginning of the file
         file.write(f"{n},{n_biomarkers},CN,AD\n" + content)  # Write the new line and then the original content
 
-
 if __name__ == "__main__":
-    ns = [50, 200, 500]
-    rs = [0.1, 0.25, 0.5, 0.75, 0.9]
-    num_of_datasets_per_combination = 50
-    # S_ordering =[
-    #     'HIP-FCI', 'PCC-FCI', 'HIP-GMI', 'FUS-GMI', 'FUS-FCI'
-    # ]
     S_ordering = np.array([
         'HIP-FCI', 'PCC-FCI', 'AB', 'P-Tau', 'MMSE', 'ADAS', 
         'HIP-GMI', 'AVLT-Sum', 'FUS-GMI', 'FUS-FCI'
     ])
+    js = [50, 200, 500]
+    rs = [0.1, 0.25, 0.5, 0.75, 0.9]
+    num_of_datasets_per_combination = 50
     real_theta_phi_file = 'real_theta_phi.json'
     output_dir = "../kde_ebm/datasets/data/synthetic"
 
-    for n in ns:
+    for j in js:
         for r in rs:
             for m in range(0, num_of_datasets_per_combination):
-
                 generate_data_from_ebm(
-                    n_participants=n,
+                    n_participants=j,
                     S_ordering=S_ordering,
                     real_theta_phi_file=real_theta_phi_file,
                     healthy_ratio=r,
-                    output_dir = output_dir,
-                    m = m,
-                    seed=m,
+                    output_dir=output_dir,
+                    m=m,
+                    seed = int(j*10 + (r * 100) + m),
                 )
 
-                reformat_data(n, r, m, output_dir)
-
-
-
-
+                reformat_data(j, r, m, output_dir)
